@@ -1,11 +1,11 @@
-# @coralite/plugin-translation
+# coralite-plugin-translation
 
 A translation plugin for Coralite that uses OpenAI API to translate page content.
 
 ## Installation
 
 ```bash
-pnpm add @coralite/plugin-translation
+pnpm add coralite-plugin-translation
 ```
 
 ## Usage
