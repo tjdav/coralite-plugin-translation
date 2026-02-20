@@ -37,4 +37,4 @@ const coralite = new Coralite({
 - **Sequential Translation:** Respects OpenAI rate limits by queuing requests.
 - **Caching:** Caches translations to disk to avoid redundant API calls.
 - **HTML Preservation:** Parses HTML and only translates text nodes, preserving structure and attributes.
-- **Incremental:** Only re-translates when source content changes (based on MD5 hash).
+- **Incremental:** Only re-translates when source content changes.
