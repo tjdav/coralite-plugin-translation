@@ -1,0 +1,30 @@
+{
+  "name": "coralite-plugin-translation",
+  "version": "0.1.0",
+  "description": "A translation plugin for Coralite that uses OpenAI API to translate page content.",
+  "type": "module",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "node --test test/**/*.spec.js"
+  },
+  "keywords": [
+    "coralite",
+    "plugin",
+    "translation",
+    "openai"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@codeberg.org/tjdavid/coralite-plugin-translation.git"
+  },
+  "author": {
+    "name": "Thomas David",
+    "url": "https://thomasjackdavid.com"
+  },
+  "license": "AGPL-3.0-or-later",
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.8.0",
+    "coralite": "link:../coralite/packages/coralite",
+    "eslint": "^10.0.0"
+  }
+}
