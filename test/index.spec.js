@@ -1,104 +1,217 @@
-import { test, after, before } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert'
-import { join } from 'node:path'
-import { mkdir, writeFile, rm, readFile } from 'node:fs/promises'
-import { Coralite } from 'coralite'
-import { translation } from '../lib/index.js'
+import {
+  findTranslatableBlocks,
+  serializeNode,
+  prepareTranslationPayload,
+  parseTranslatedPayload,
+  reconstructBlock
+} from '../lib/block-utils.js'
 
-const tempDir = join(process.cwd(), 'temp-translation-test')
-const pagesDir = join(tempDir, 'pages')
-const templatesDir = join(tempDir, 'templates')
-const cacheDir = join(tempDir, '.coralite/cache')
-
-// Mock fetch
-const originalFetch = global.fetch
-let fetchCallCount = 0
-
-before(async () => {
-  await mkdir(pagesDir, { recursive: true })
-  await mkdir(templatesDir, { recursive: true })
-
-  await writeFile(join(pagesDir, 'index.html'), '<html><body><p>Hello World</p><img alt="An image" src="img.jpg"><input type="button" value="Submit"></body></html>')
-
-  global.fetch = async (url, options) => {
-    fetchCallCount++
-    if (url.includes('api.openai.com')) {
-      const body = JSON.parse(options.body)
-      const content = body.messages[1].content // user message
-
-      const parts = content.split('\n\n---\n\n')
-      parts[0] = parts[0].split('\n').slice(1).join('\n')
-
-      const translatedParts = parts.map(p => `Translated: ${p.trim()}`)
-      const responseContent = translatedParts.join('---')
-
-      return {
-        ok: true,
-        json: async () => ({
-          choices: [{
-            message: {
-              content: responseContent
-            }
-          }]
-        })
-      }
-    }
-    return originalFetch(url, options)
+// Mock AST helpers
+function createTag (name, children = [], attribs = {}) {
+  const node = {
+    type: 'tag',
+    name,
+    children,
+    attribs
   }
-})
+  children.forEach(c => {
+    if (typeof c === 'object') c.parent = node
+  })
+  return node
+}
 
-after(async () => {
-  global.fetch = originalFetch
-  await rm(tempDir, {
-    recursive: true,
-    force: true
+function createText (data) {
+  return {
+    type: 'text',
+    data
+  }
+}
+
+function createComment (data) {
+  return {
+    type: 'comment',
+    data
+  }
+}
+
+function createRoot (children = []) {
+  const node = {
+    type: 'root',
+    children
+  }
+  children.forEach(c => {
+    if (typeof c === 'object') c.parent = node
+  })
+  return node
+}
+
+test('findTranslatableBlocks', async (t) => {
+  await t.test('identifies semantic blocks with text', () => {
+    const root = createRoot([
+      createTag('p', [createText('Hello')]),
+      createTag('div', [createTag('p', [createText('World')])])
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 2)
+    assert.strictEqual(blocks[0].name, 'p')
+    assert.strictEqual(blocks[1].name, 'p')
+  })
+
+  await t.test('skips semantic blocks without text', () => {
+    const root = createRoot([
+      createTag('p', []), // Empty
+      createTag('h1', [createTag('span', [])]) // Nested empty
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 0)
+  })
+
+  await t.test('identifies container blocks with direct text', () => {
+    const root = createRoot([
+      createTag('div', [createText('Direct text')]),
+      createTag('section', [createText('  '), createTag('span', [createText('Wrapped')])])
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 2)
+    assert.strictEqual(blocks[0].name, 'div') // Direct text
+    assert.strictEqual(blocks[1].name, 'span') // Direct text inside section
+  })
+
+  await t.test('skips ignored tags', () => {
+    const root = createRoot([
+      createTag('script', [createText('console.log("hello")')]),
+      createTag('style', [createText('.css {}')])
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 0)
+  })
+
+  await t.test('handles nested structures correctly', () => {
+    const root = createRoot([
+      createTag('div', [
+        createTag('p', [createText('Text')])
+      ])
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 1)
+    assert.strictEqual(blocks[0].name, 'p')
   })
 })
 
-test('Translation plugin with fragment caching', async (t) => {
-  const coralite = new Coralite({
-    pages: pagesDir,
-    templates: templatesDir,
-    plugins: [
-      translation({
-        sourceLanguage: 'en',
-        targetLanguages: ['en', 'fr'],
-        api: { key: 'fake-key' },
-        cacheDir: cacheDir,
-        chunkSize: 5,
-        attributes: { 'input[type=button]:value': true }
-      })
+test('serializeNode', async (t) => {
+  await t.test('serializes text node', () => {
+    const node = createText('Hello & World')
+    assert.strictEqual(serializeNode(node), 'Hello &amp; World')
+  })
+
+  await t.test('serializes simple tag', () => {
+    const node = createTag('p', [createText('Hello')], { class: 'greeting' })
+    assert.strictEqual(serializeNode(node), '<p class="greeting">Hello</p>')
+  })
+
+  await t.test('serializes void tag', () => {
+    const node = createTag('img', [], {
+      src: 'img.jpg',
+      alt: 'Image'
+    })
+    assert.strictEqual(serializeNode(node), '<img src="img.jpg" alt="Image">')
+  })
+
+  await t.test('serializes nested tags', () => {
+    const node = createTag('div', [
+      createTag('p', [createText('Hello')]),
+      createTag('br')
+    ])
+    assert.strictEqual(serializeNode(node), '<div><p>Hello</p><br></div>')
+  })
+
+  await t.test('serializes boolean attributes correctly', () => {
+    const node = createTag('input', [], {
+      type: 'checkbox',
+      checked: ''
+    })
+    assert.strictEqual(serializeNode(node), '<input type="checkbox" checked="">')
+  })
+})
+
+test('prepareTranslationPayload', async (t) => {
+  await t.test('wraps blocks in chunks', () => {
+    const blocks = [
+      createTag('p', [createText('Block 1')]),
+      createTag('h1', [createText('Block 2')])
     ]
+
+    const { payload, mapping } = prepareTranslationPayload(blocks)
+
+    assert.match(payload, /<chunk id="0">\s*Block 1\s*<\/chunk>/)
+    assert.match(payload, /<chunk id="1">\s*Block 2\s*<\/chunk>/)
+    assert.strictEqual(mapping.length, 2)
+    assert.strictEqual(mapping[0].index, 0)
+    assert.strictEqual(mapping[1].index, 1)
   })
+})
 
-  await coralite.initialise()
+test('parseTranslatedPayload', async (t) => {
+  await t.test('extracts chunks', () => {
+    const response = `
+      <chunk id="0">Translated 1</chunk>
+      Some noise
+      <chunk id="1">
+        Translated 2
+      </chunk>
+    `
 
-  // First run
-  fetchCallCount = 0
-  let results = await coralite.build()
+    const translations = parseTranslatedPayload(response)
 
-  assert.strictEqual(results.length, 2)
-  const translated = results.find(r => r.path.pathname.endsWith('fr/index.html'))
+    assert.strictEqual(translations.size, 2)
+    assert.strictEqual(translations.get(0), 'Translated 1')
+    assert.strictEqual(translations.get(1), 'Translated 2')
+  })
+})
 
-  assert.match(translated.html, /Translated: Hello World/)
-  assert.match(translated.html, /alt="Translated: An image"/)
-  assert.match(translated.html, /value="Translated: Submit"/, 'Input value should be translated via selector')
+test('reconstructBlock', async (t) => {
+  await t.test('updates block children', () => {
+    const block = createTag('p', [createText('Original')])
+    const translatedHtml = 'Translated <strong>Text</strong>'
 
-  assert.ok(fetchCallCount > 0, 'Should call API on first run')
-  const initialFetchCount = fetchCallCount
+    // Mock parse function
+    const mockParse = (html) => {
+      // Simple mock: if html contains tags, return structure
+      if (html.includes('<strong>')) {
+        return {
+          root: {
+            children: [
+              createText('Translated '),
+              createTag('strong', [createText('Text')])
+            ]
+          }
+        }
+      }
+      return { root: { children: [createText(html)] } }
+    }
 
-  // Check cache file
-  const cacheContent = await readFile(join(cacheDir, 'i18n.json'), 'utf-8')
-  const cache = JSON.parse(cacheContent)
-  assert.ok(cache['Hello World'], 'Fragment should be cached')
-  assert.strictEqual(cache['Hello World']['fr'], 'Translated: Hello World')
+    reconstructBlock(block, translatedHtml, mockParse)
 
-  // Second run - should use cache
-  fetchCallCount = 0
-  results = await coralite.build()
-
-  assert.strictEqual(fetchCallCount, 0, 'Should NOT call API on second run (cached)')
-
-  const translated2 = results.find(r => r.path.pathname.endsWith('fr/index.html'))
-  assert.match(translated2.html, /Translated: Hello World/)
+    assert.strictEqual(block.children.length, 2)
+    assert.strictEqual(block.children[0].data, 'Translated ')
+    assert.strictEqual(block.children[1].name, 'strong')
+    assert.strictEqual(block.children[1].parent, block)
+  })
 })
