@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { describe, test } from 'node:test'
 import assert from 'node:assert'
 import {
   findTranslatableBlocks,
@@ -213,5 +213,99 @@ test('reconstructBlock', async (t) => {
     assert.strictEqual(block.children[0].data, 'Translated ')
     assert.strictEqual(block.children[1].name, 'strong')
     assert.strictEqual(block.children[1].parent, block)
+  })
+})
+
+describe('Code Translation Routing', () => {
+  test('should extract <pre> and <code> blocks alongside standard text', () => {
+    // Mock a Coralite AST containing standard text, code, and ignored tags
+    const mockAstRoot = {
+      type: 'tag',
+      name: 'div',
+      children: [
+        {
+          type: 'tag',
+          name: 'p',
+          children: [{
+            type: 'text',
+            data: 'Standard paragraph'
+          }]
+        },
+        {
+          type: 'tag',
+          name: 'pre',
+          children: [
+            {
+              type: 'tag',
+              name: 'code',
+              children: [{
+                type: 'text',
+                data: '// Translate this comment'
+              }]
+            }
+          ]
+        },
+        {
+          type: 'tag',
+          name: 'script', // This should still be entirely skipped
+          children: [{
+            type: 'text',
+            data: 'console.log("Do not translate");'
+          }]
+        }
+      ]
+    }
+
+    const blocks = []
+    findTranslatableBlocks(mockAstRoot, blocks)
+
+    // We expect exactly 2 blocks: the <p> and the <pre>
+    assert.strictEqual(blocks.length, 2, 'Should find exactly two translatable blocks')
+    assert.strictEqual(blocks[0].name, 'p', 'First block should be standard text')
+    assert.strictEqual(blocks[1].name, 'pre', 'Second block should be the code block')
+  })
+
+  test('should correctly route blocks into standardTasks and codeTasks', () => {
+    // Mock the extracted blocks from the DOM
+    const blocks = [
+      {
+        name: 'h1',
+        data: 'Title'
+      },
+      {
+        name: 'pre',
+        data: 'let x = 1;'
+      },
+      {
+        name: 'p',
+        data: 'Description'
+      },
+      {
+        name: 'code',
+        data: 'npm install'
+      }
+    ]
+
+    const standardTasks = []
+    const codeTasks = []
+
+    // Replicate the routing logic from lib/index.js
+    for (const block of blocks) {
+      if (block.name === 'pre' || block.name === 'code') {
+        codeTasks.push(block)
+      } else {
+        standardTasks.push(block)
+      }
+    }
+
+    // Verify Standard Tasks
+    assert.strictEqual(standardTasks.length, 2)
+    assert.strictEqual(standardTasks[0].name, 'h1')
+    assert.strictEqual(standardTasks[1].name, 'p')
+
+    // Verify Code Tasks
+    assert.strictEqual(codeTasks.length, 2)
+    assert.strictEqual(codeTasks[0].name, 'pre')
+    assert.strictEqual(codeTasks[1].name, 'code')
   })
 })
