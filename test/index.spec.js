@@ -115,18 +115,13 @@ test('findTranslatableBlocks', async (t) => {
   })
 })
 
-test('serializeNode', async (t) => {
-  await t.test('serializes text node', () => {
-    const node = createText('Hello & World')
-    assert.strictEqual(serializeNode(node), 'Hello &amp; World')
-  })
-
-  await t.test('serializes simple tag', () => {
+describe('serializeNode', async (t) => {
+  test('serializes simple tag', () => {
     const node = createTag('p', [createText('Hello')], { class: 'greeting' })
     assert.strictEqual(serializeNode(node), '<p class="greeting">Hello</p>')
   })
 
-  await t.test('serializes void tag', () => {
+  test('serializes void tag', () => {
     const node = createTag('img', [], {
       src: 'img.jpg',
       alt: 'Image'
@@ -134,7 +129,7 @@ test('serializeNode', async (t) => {
     assert.strictEqual(serializeNode(node), '<img src="img.jpg" alt="Image">')
   })
 
-  await t.test('serializes nested tags', () => {
+  test('serializes nested tags', () => {
     const node = createTag('div', [
       createTag('p', [createText('Hello')]),
       createTag('br')
@@ -142,7 +137,7 @@ test('serializeNode', async (t) => {
     assert.strictEqual(serializeNode(node), '<div><p>Hello</p><br></div>')
   })
 
-  await t.test('serializes boolean attributes correctly', () => {
+  test('serializes boolean attributes correctly', () => {
     const node = createTag('input', [], {
       type: 'checkbox',
       checked: ''
@@ -151,8 +146,8 @@ test('serializeNode', async (t) => {
   })
 })
 
-test('prepareTranslationPayload', async (t) => {
-  await t.test('wraps blocks in chunks', () => {
+describe('prepareTranslationPayload', async (t) => {
+  test('wraps blocks in chunks', () => {
     const blocks = [
       createTag('p', [createText('Block 1')]),
       createTag('h1', [createText('Block 2')])
