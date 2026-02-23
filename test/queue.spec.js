@@ -1,10 +1,10 @@
 
-import { test } from 'node:test'
+import { describe, test } from 'node:test'
 import assert from 'node:assert'
 import { createTranslationQueue } from '../lib/queue.js'
 
-test('createTranslationQueue', async (t) => {
-  await t.test('executes tasks sequentially with concurrency 1', async () => {
+describe('createTranslationQueue', async () => {
+  test('executes tasks sequentially with concurrency 1', async () => {
     const queue = createTranslationQueue(1)
     const results = []
 
@@ -20,7 +20,7 @@ test('createTranslationQueue', async (t) => {
     assert.deepStrictEqual(results, [1, 2])
   })
 
-  await t.test('executes tasks concurrently with concurrency > 1', async () => {
+  test('executes tasks concurrently with concurrency > 1', async () => {
     const queue = createTranslationQueue(2)
     const results = []
 
@@ -37,7 +37,7 @@ test('createTranslationQueue', async (t) => {
     assert.deepStrictEqual(results, [2, 1])
   })
 
-  await t.test('respects concurrency limit', async () => {
+  test('respects concurrency limit', async () => {
     const queue = createTranslationQueue(2)
     let active = 0
     let maxActive = 0
@@ -58,7 +58,7 @@ test('createTranslationQueue', async (t) => {
     assert.strictEqual(maxActive, 2)
   })
 
-  await t.test('handles task rejection', async () => {
+  test('handles task rejection', async () => {
     const queue = createTranslationQueue(1)
     const error = new Error('Task failed')
 
