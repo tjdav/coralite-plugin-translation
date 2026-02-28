@@ -20,7 +20,7 @@ const coralite = new Coralite({
   plugins: [
     translation({
       sourceLanguage: 'en',
-      targetLanguages: ['en', 'fr', 'es'],
+      targetLanguages: ['de', 'fr', 'es'],
       concurrency: 5,
       openai: {
         apiKey: process.env.OPENAI_API_KEY,
