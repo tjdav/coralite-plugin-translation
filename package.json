@@ -1,6 +1,6 @@
 {
   "name": "coralite-plugin-translation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A translation plugin for Coralite that uses OpenAI API to translate page content.",
   "type": "module",
   "main": "lib/index.js",
