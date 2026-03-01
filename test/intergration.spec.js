@@ -115,6 +115,7 @@ describe('Integration Test', () => {
     const plugin = translationPlugin({
       sourceLanguage: 'en',
       targetLanguages: ['de'],
+      baseURL: 'https://example.com/',
       api: { key: 'mock-key' },
       cacheDir
     })
@@ -129,6 +130,9 @@ describe('Integration Test', () => {
 
     const htmlContentIndex = `
       <html>
+        <head>
+          <title>Test</title>
+        </head>
         <body>
           <h1>Hello World</h1>
           <a href="/about.html" aria-label="Label">Click here</a>
@@ -139,6 +143,9 @@ describe('Integration Test', () => {
 
     const htmlContentAbout = `
       <html>
+        <head>
+          <title>About Us</title>
+        </head>
         <body>
           <h1>About Us</h1>
           <p>We are a great company.</p>
@@ -150,14 +157,30 @@ describe('Integration Test', () => {
     const pathAbout = { pathname: join(pagesDir, 'about.html') }
 
     // === 1. First Pass (No Cache) ===
+    const beforeIndexHtml = await plugin.onBeforePageRender.call(hookContext, {
+      path: pathIndex,
+      html: htmlContentIndex
+    })
+
+    // Verify source html correctly adds lang, canonical and hreflang
+    assert.ok(beforeIndexHtml.includes('lang="en"'), 'Source language should have lang attribute set')
+    assert.ok(beforeIndexHtml.includes('hreflang="de" href="https://example.com/de"'), 'Source language should have target hreflang')
+    assert.ok(beforeIndexHtml.includes('hreflang="en" href="https://example.com"'), 'Source language should have source hreflang')
+    assert.ok(beforeIndexHtml.includes('hreflang="x-default" href="https://example.com"'), 'Source language should have x-default hreflang')
+    assert.ok(beforeIndexHtml.includes('rel="canonical" href="https://example.com"'), 'Source language should have canonical link')
+
     const generatedPagesIndex = await plugin.onAfterPageRender.call(hookContext, {
       path: pathIndex,
-      html: htmlContentIndex,
+      html: beforeIndexHtml, // Use modified html from onBeforePageRender
       duration: 100
     })
 
     assert.strictEqual(generatedPagesIndex.length, 1, 'Should generate one translated page for index')
     const translatedHtmlIndex = generatedPagesIndex[0].html
+
+    assert.ok(translatedHtmlIndex.includes('lang="de"'), 'Target page should have lang attribute set')
+    assert.ok(translatedHtmlIndex.includes('rel="canonical" href="https://example.com/de"'), 'Target page should have updated canonical link')
+    assert.ok(translatedHtmlIndex.includes('hreflang="de" href="https://example.com/de"'), 'Target page should retain hreflang')
 
     assert.ok(translatedHtmlIndex.includes('<h1>Hallo Welt</h1>'), 'Standard text should be translated')
     assert.ok(translatedHtmlIndex.includes('Klicken Sie hier'), 'Link text should be translated')
@@ -166,9 +189,22 @@ describe('Integration Test', () => {
     assert.ok(translatedHtmlIndex.includes('href="/de/about.html"'), 'Relative link should be localized')
 
     // Process second page (about.html)
+    const beforeAboutHtml = await plugin.onBeforePageRender.call(hookContext, {
+      path: pathAbout,
+      html: htmlContentAbout
+    })
+
+    // Debugging print if test fails
+    if (!beforeAboutHtml.includes('hreflang="de" href="https://example.com/de/about.html"')) {
+      console.log('BEFORE ABOUT HTML:', beforeAboutHtml)
+    }
+
+    assert.ok(beforeAboutHtml.includes('hreflang="de" href="https://example.com/de/about.html"'), 'About page should have correct target hreflang')
+    assert.ok(beforeAboutHtml.includes('rel="canonical" href="https://example.com/about.html"'), 'About page should have correct canonical link')
+
     const generatedPagesAbout = await plugin.onAfterPageRender.call(hookContext, {
       path: pathAbout,
-      html: htmlContentAbout,
+      html: beforeAboutHtml,
       duration: 100
     })
 
@@ -182,7 +218,7 @@ describe('Integration Test', () => {
 
     const cachedPages = await plugin.onAfterPageRender.call(hookContext, {
       path: pathIndex,
-      html: htmlContentIndex, // Same content
+      html: beforeIndexHtml, // Same content
       duration: 100
     })
 
@@ -207,7 +243,7 @@ describe('Integration Test', () => {
     await plugin.onPageDelete.call(hookContext, { path: pathIndex })
 
     // Trigger build complete with all pages built
-    await plugin.onBuildComplete.call(hookContext, {
+    await plugin.onAfterBuild.call(hookContext, {
       results: [{}, {}] // Length matches context.pages.list.length (2)
     })
 

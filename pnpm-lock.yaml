@@ -12,8 +12,8 @@ importers:
         specifier: ^5.8.0
         version: 5.8.0(eslint@10.0.0)
       coralite:
-        specifier: ^0.24.0
-        version: 0.24.0
+        specifier: ^0.25.0
+        version: 0.25.0
       eslint:
         specifier: ^10.0.0
         version: 10.0.0
@@ -254,11 +254,6 @@ packages:
     resolution: {integrity: sha512-HEHNfbars9v4pgpW6SO1KSPkfoS0xVOM/9UzkJltjlsHZmJasxg8aXkuZa7SMf8vKGIBhpUsPluQSqhJFCqebw==}
     engines: {node: '>=0.4.0'}
 
-  acorn@8.15.0:
-    resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
@@ -279,8 +274,8 @@ packages:
     resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
     engines: {node: '>=18'}
 
-  coralite@0.24.0:
-    resolution: {integrity: sha512-TedXVrJsvgftZi/i1JMpOEootLmr4xtt+MG3Imv3Cg7oyadzMBGoKOXwlTNtj40hoLF8+YKrcD5WB9oXmHzY3g==}
+  coralite@0.25.0:
+    resolution: {integrity: sha512-UsmRnqOcGm7M/RJQACO+wJYxuB0VxcLVaur3j0A9C3phmaJqJcnm+NPP/te4t4a+SS/jOGVglgIUlBX3hRd5cg==}
     engines: {node: '>20.19.0'}
     hasBin: true
 
@@ -709,15 +704,13 @@ snapshots:
 
   '@typescript-eslint/types@8.55.0': {}
 
-  acorn-jsx@5.3.2(acorn@8.15.0):
+  acorn-jsx@5.3.2(acorn@8.16.0):
     dependencies:
-      acorn: 8.15.0
+      acorn: 8.16.0
 
   acorn-walk@8.3.5:
     dependencies:
       acorn: 8.16.0
-
-  acorn@8.15.0: {}
 
   acorn@8.16.0: {}
 
@@ -738,7 +731,7 @@ snapshots:
 
   commander@13.1.0: {}
 
-  coralite@0.24.0:
+  coralite@0.25.0:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.5
@@ -869,14 +862,14 @@ snapshots:
 
   espree@10.4.0:
     dependencies:
-      acorn: 8.15.0
-      acorn-jsx: 5.3.2(acorn@8.15.0)
+      acorn: 8.16.0
+      acorn-jsx: 5.3.2(acorn@8.16.0)
       eslint-visitor-keys: 4.2.1
 
   espree@11.1.0:
     dependencies:
-      acorn: 8.15.0
-      acorn-jsx: 5.3.2(acorn@8.15.0)
+      acorn: 8.16.0
+      acorn-jsx: 5.3.2(acorn@8.16.0)
       eslint-visitor-keys: 5.0.0
 
   esquery@1.7.0:
