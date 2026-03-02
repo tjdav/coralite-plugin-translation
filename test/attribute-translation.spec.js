@@ -31,7 +31,7 @@ describe('Attribute Translation', () => {
     const { payload, mapping } = prepareTranslationPayload(blocks)
 
     // Should contain the outer tag
-    assert.ok(payload.includes('<a href="#" aria-label="Label">'))
+    assert.ok(payload.includes('$0[aria-label: Label]$0_'))
     assert.ok(mapping[0].originalHtml.startsWith('<a'))
   })
 

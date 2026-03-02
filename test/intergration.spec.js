@@ -40,7 +40,8 @@ describe('Integration Test', () => {
         // Extract chunks and replace comments
         responseContent = userMessage.replace(/<chunk id="(\d+)">([\s\S]*?)<\/chunk>/g, (match, id, content) => {
           let translated = content.replace(/\/\/ Translate this comment/, '// Translate this comment (Translated to DE)')
-          return `<chunk id="${id}">${translated}</chunk>`
+          // if chunk originally was missing \n we shouldn't add it, test fails validation if text changes length too much or adds formatting
+          return `<chunk id="${id}">\n${translated}\n</chunk>`
         })
       } else {
         // Standard text mock translation
@@ -52,10 +53,12 @@ describe('Integration Test', () => {
           if (content.includes('Click here')) {
             translated = translated.replace('Click here', 'Klicken Sie hier')
           }
-          if (content.includes('aria-label="Label"')) {
+          if (content.includes('[aria-label: Label]')) {
+            translated = translated.replace('[aria-label: Label]', '[aria-label: Label (DE)]')
+          } else if (content.includes('aria-label="Label"')) {
             translated = translated.replace('aria-label="Label"', 'aria-label="Label (DE)"')
           }
-          return `<chunk id="${id}">${translated}</chunk>`
+          return `<chunk id="${id}">\n${translated}\n</chunk>`
         })
       }
 
@@ -157,10 +160,14 @@ describe('Integration Test', () => {
     const pathAbout = { pathname: join(pagesDir, 'about.html') }
 
     // === 1. First Pass (No Cache) ===
-    const beforeIndexHtml = await plugin.onBeforePageRender.call(hookContext, {
-      path: pathIndex,
-      html: htmlContentIndex
+    const parsedIndex = parseHTML(htmlContentIndex)
+    const beforeIndexRender = await plugin.onBeforePageRender.call(hookContext, {
+      document: {
+        path: pathIndex,
+        root: parsedIndex.root
+      }
     })
+    const beforeIndexHtml = hookContext.transform(parsedIndex.root)
 
     // Verify source html correctly adds lang, canonical and hreflang
     assert.ok(beforeIndexHtml.includes('lang="en"'), 'Source language should have lang attribute set')
@@ -189,15 +196,14 @@ describe('Integration Test', () => {
     assert.ok(translatedHtmlIndex.includes('href="/de/about.html"'), 'Relative link should be localized')
 
     // Process second page (about.html)
-    const beforeAboutHtml = await plugin.onBeforePageRender.call(hookContext, {
-      path: pathAbout,
-      html: htmlContentAbout
+    const parsedAbout = parseHTML(htmlContentAbout)
+    const beforeAboutRender = await plugin.onBeforePageRender.call(hookContext, {
+      document: {
+        path: pathAbout,
+        root: parsedAbout.root
+      }
     })
-
-    // Debugging print if test fails
-    if (!beforeAboutHtml.includes('hreflang="de" href="https://example.com/de/about.html"')) {
-      console.log('BEFORE ABOUT HTML:', beforeAboutHtml)
-    }
+    const beforeAboutHtml = hookContext.transform(parsedAbout.root)
 
     assert.ok(beforeAboutHtml.includes('hreflang="de" href="https://example.com/de/about.html"'), 'About page should have correct target hreflang')
     assert.ok(beforeAboutHtml.includes('rel="canonical" href="https://example.com/about.html"'), 'About page should have correct canonical link')
