@@ -113,6 +113,24 @@ test('findTranslatableBlocks', async (t) => {
     assert.strictEqual(blocks.length, 1)
     assert.strictEqual(blocks[0].name, 'p')
   })
+
+  await t.test('skips elements with no-translate attribute', () => {
+    const root = createRoot([
+      createTag('div', [
+        createTag('p', [createText('Translate me')]),
+        createTag('div', [
+          createTag('p', [createText('Skip me')])
+        ], { 'no-translate': '' })
+      ])
+    ])
+
+    const blocks = []
+    findTranslatableBlocks(root, blocks)
+
+    assert.strictEqual(blocks.length, 1)
+    assert.strictEqual(blocks[0].name, 'p')
+    assert.strictEqual(blocks[0].children[0].data, 'Translate me')
+  })
 })
 
 describe('serializeNode', async (t) => {

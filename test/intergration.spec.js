@@ -140,6 +140,9 @@ describe('Integration Test', () => {
           <h1>Hello World</h1>
           <a href="/about.html" aria-label="Label">Click here</a>
           <pre><code>// Translate this comment\nconst x = 1;</code></pre>
+          <div no-translate="true">
+            <p>Do not translate this.</p>
+          </div>
         </body>
       </html>
     `
@@ -171,6 +174,7 @@ describe('Integration Test', () => {
 
     // Verify source html correctly adds lang, canonical and hreflang
     assert.ok(beforeIndexHtml.includes('lang="en"'), 'Source language should have lang attribute set')
+    assert.ok(!beforeIndexHtml.includes('no-translate'), 'no-translate attribute should be removed from source HTML')
     assert.ok(beforeIndexHtml.includes('hreflang="de" href="https://example.com/de"'), 'Source language should have target hreflang')
     assert.ok(beforeIndexHtml.includes('hreflang="en" href="https://example.com"'), 'Source language should have source hreflang')
     assert.ok(beforeIndexHtml.includes('hreflang="x-default" href="https://example.com"'), 'Source language should have x-default hreflang')
@@ -194,6 +198,9 @@ describe('Integration Test', () => {
     assert.ok(translatedHtmlIndex.includes('aria-label="Label (DE)"'), 'Attribute should be translated')
     assert.ok(translatedHtmlIndex.includes('// Translate this comment (Translated to DE)'), 'Code comment should be translated')
     assert.ok(translatedHtmlIndex.includes('href="/de/about.html"'), 'Relative link should be localized')
+
+    assert.ok(!translatedHtmlIndex.includes('no-translate'), 'no-translate attribute should be removed from target HTML')
+    assert.ok(translatedHtmlIndex.includes('Do not translate this.'), 'Element with no-translate should not be translated but still present')
 
     // Process second page (about.html)
     const parsedAbout = parseHTML(htmlContentAbout)

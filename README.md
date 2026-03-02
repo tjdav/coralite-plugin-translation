@@ -11,6 +11,7 @@ A powerful translation plugin for Coralite that uses the OpenAI API to automatic
 - **Code Block Intelligence:** Detects `<pre>` and `<code>` blocks and uses a specialized prompt to translate *only* comments and user-facing string literals, preserving your code's exact functionality.
 - **Link Localization:** Automatically updates relative internal links to point to the correct localized version (e.g., updating `href="/about.html"` to `href="/fr/about.html"`).
 - **Attribute Translation:** Intelligently parses and translates specific HTML attributes, including `alt`, `title`, `placeholder`, and `aria-label`.
+- **Translation Opt-Out:** Add the boolean `no-translate` attribute to any HTML element to completely skip it (and its children) from translation. The attribute is automatically removed from the generated HTML for all languages.
 
 ## Installation
 
