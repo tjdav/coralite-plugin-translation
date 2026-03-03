@@ -174,19 +174,21 @@ describe('Integration Test', () => {
 
     // Verify source html correctly adds lang, canonical and hreflang
     assert.ok(beforeIndexHtml.includes('lang="en"'), 'Source language should have lang attribute set')
-    assert.ok(!beforeIndexHtml.includes('no-translate'), 'no-translate attribute should be removed from source HTML')
+    assert.ok(beforeIndexHtml.includes('no-translate'), 'no-translate attribute should NOT be removed from source AST yet')
     assert.ok(beforeIndexHtml.includes('hreflang="de" href="https://example.com/de"'), 'Source language should have target hreflang')
     assert.ok(beforeIndexHtml.includes('hreflang="en" href="https://example.com"'), 'Source language should have source hreflang')
     assert.ok(beforeIndexHtml.includes('hreflang="x-default" href="https://example.com"'), 'Source language should have x-default hreflang')
     assert.ok(beforeIndexHtml.includes('rel="canonical" href="https://example.com"'), 'Source language should have canonical link')
 
-    const generatedPagesIndex = await plugin.onAfterPageRender.call(hookContext, {
+    const renderContext = {
       path: pathIndex,
       html: beforeIndexHtml, // Use modified html from onBeforePageRender
       duration: 100
-    })
+    }
+    const generatedPagesIndex = await plugin.onAfterPageRender.call(hookContext, renderContext)
 
     assert.strictEqual(generatedPagesIndex.length, 1, 'Should generate one translated page for index')
+    assert.ok(!renderContext.html.includes('no-translate'), 'no-translate attribute should be removed from source HTML by onAfterPageRender')
     const translatedHtmlIndex = generatedPagesIndex[0].html
 
     assert.ok(translatedHtmlIndex.includes('lang="de"'), 'Target page should have lang attribute set')
@@ -201,6 +203,10 @@ describe('Integration Test', () => {
 
     assert.ok(!translatedHtmlIndex.includes('no-translate'), 'no-translate attribute should be removed from target HTML')
     assert.ok(translatedHtmlIndex.includes('Do not translate this.'), 'Element with no-translate should not be translated but still present')
+
+    // Verify payload content specifically did NOT include the no-translate block
+    const fetchPayloads = fetchCalls.map(call => JSON.parse(call.options.body).messages.find(m => m.role === 'user').content).join('\n')
+    assert.ok(!fetchPayloads.includes('Do not translate this.'), 'Content of no-translate elements MUST NOT be sent to the AI translator')
 
     // Process second page (about.html)
     const parsedAbout = parseHTML(htmlContentAbout)
