@@ -143,6 +143,20 @@ describe('Integration Test', () => {
           <div no-translate="true">
             <p>Do not translate this.</p>
           </div>
+          <ul>
+            <li>
+              <nav no-translate class="dropdown" aria-expanded="false">
+                <button class="dropdown-toggle" id="coralite-language-switcher__button-1">
+                  <span class="d-none">
+                    English
+                  </span>🇬🇧 EN
+                </button>
+                <ul class="dropdown-menu" id="coralite-language-switcher__tooltip-1">
+                  <li><a href="/fr/index.html" hreflang="fr">Français</a></li><li><a href="/es/index.html" hreflang="es">Español</a></li><li><a href="/de/index.html" hreflang="de">Deutsch</a></li>
+                </ul>
+              </nav>
+            </li>
+          </ul>
         </body>
       </html>
     `
@@ -162,7 +176,6 @@ describe('Integration Test', () => {
     const pathIndex = { pathname: join(pagesDir, 'index.html') }
     const pathAbout = { pathname: join(pagesDir, 'about.html') }
 
-    // === 1. First Pass (No Cache) ===
     const parsedIndex = parseHTML(htmlContentIndex)
     const beforeIndexRender = await plugin.onBeforePageRender.call(hookContext, {
       document: {
@@ -207,6 +220,8 @@ describe('Integration Test', () => {
     // Verify payload content specifically did NOT include the no-translate block
     const fetchPayloads = fetchCalls.map(call => JSON.parse(call.options.body).messages.find(m => m.role === 'user').content).join('\n')
     assert.ok(!fetchPayloads.includes('Do not translate this.'), 'Content of no-translate elements MUST NOT be sent to the AI translator')
+    assert.ok(!fetchPayloads.includes('Français'), 'Nested list item texts in no-translate MUST NOT be sent to the AI translator')
+    assert.ok(!fetchPayloads.includes('Deutsch'), 'Nested list item texts in no-translate MUST NOT be sent to the AI translator')
 
     // Process second page (about.html)
     const parsedAbout = parseHTML(htmlContentAbout)
@@ -232,7 +247,6 @@ describe('Integration Test', () => {
     // Verify fetch was called 3 times total (2 for index (text+code), 1 for about)
     assert.strictEqual(fetchCallCount, 3, 'Fetch should be called 3 times total')
 
-    // === 2. Second Pass (Cached) ===
     fetchCallCount = 0 // Reset fetch count
 
     const cachedPages = await plugin.onAfterPageRender.call(hookContext, {
@@ -247,7 +261,6 @@ describe('Integration Test', () => {
     const cachedHtml = cachedPages[0].html
     assert.ok(cachedHtml.includes('<h1>Hallo Welt</h1>'))
 
-    // === 3. Cleanup (Unused Hashes) ===
     // Verify initial cache has keys from both pages
     const i18nFile = join(cacheDir, 'i18n.json')
     const fs = await import('node:fs/promises')
