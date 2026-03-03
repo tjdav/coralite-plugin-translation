@@ -13,6 +13,9 @@
     "translation",
     "openai"
   ],
+  "files": [
+    "lib"
+  ],
   "repository": {
     "type": "git",
     "url": "git@codeberg.org/tjdavid/coralite-plugin-translation.git"
